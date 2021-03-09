@@ -24,7 +24,6 @@ data <- read_csv("Data/2020-Apr.csv")
 head(data)
 
 #Data Cleaning
-#data$event_time <- as_datetime(data$event_time)
 unique(data$event_type)
 
 purchases <- subset(data, data$event_type == "purchase")
@@ -33,7 +32,6 @@ purchases$event_time <- as_datetime(purchases$event_time)
 head(purchases)
 
 purchases_no_missing <- na.omit(purchases)
-#purchases_no_missing$event_time <- as_datetime(purchases_no_missing$event_time)
 
 grouped <- group_by(purchases_no_missing, user_id)
 head(grouped)
@@ -42,33 +40,34 @@ a <- summarize(grouped, nodes = list(product_id))
 head(a)
 a$nodes
 
-num_nodes <- sapply(a$nodes, length)
-a$num_nodes <- num_nodes
+a$num_nodes <- sapply(a$nodes, length)
+a$unique <- sapply(sapply(a$nodes, unique), length)
 
-c <- subset(a, a$num_nodes > 1)
-
-#b <- a[1:100, ]
-#head(b, 15)
-
-#ifelse(length(a$nodes) > 1, TRUE, FALSE)
+c <- subset(a, a$num_nodes > 1 & a$unique > 1)
+head(c)
 
 verts <- c()
 for(i in 1:nrow(c)){
   cat(round(i / nrow(c) * 100, 2), "%    \r")
-  nodes <- c()
-  len = length(c$nodes[[i]])
-  for(j in 1:len){
-    node <- c$nodes[[i]][j]
-    if(j == 1 | j == len){
+  node_list <- c$nodes[[i]]
+  nodes <- c(node_list[1])
+  #print(node_list)
+  len <- length(node_list)
+  for(j in 2:len){
+    node <- node_list[j]
+    prior <- node_list[j - 1]
+    if(node == prior){
+      next
+    } else if(j == len | (length(unique(node_list[j:len]))) == 1){
       nodes <- c(nodes, node)
-    }
-    else {
+    } else{
       nodes <- c(nodes, node, node)
     }
   }
   verts <- c(verts, nodes)
 }
-rm(i, j, node, nodes, num_nodes)
+
+rm(i, j, len, node, nodes, num_nodes)
 
 verts <- as.character(verts)
 #verts
@@ -106,8 +105,6 @@ item_subcomponent <- as_data_frame(g_subcomponent)
 colnames(item_subcomponent) <- c("Source", "Target")
 
 write.table(item_subcomponent, row.names = FALSE, col.names = c("Source", "Target"), sep = ",", file = "subcomponent.csv")
-
-
 
 
 
