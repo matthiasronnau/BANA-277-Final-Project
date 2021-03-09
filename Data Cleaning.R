@@ -35,6 +35,7 @@ purchases$event_time <- as_datetime(purchases$event_time)
 head(purchases)
 
 purchases_no_missing <- na.omit(purchases)
+write.table(purchases_no_missing, row.names = FALSE, col.names = colnames(purchases_no_missing), sep = ",", file = "purchases_no_missing.csv")
 
 g <- graphdata::graph_data(data = purchases_no_missing, id = "user_id", product_id = "product_id")
 print(g)
