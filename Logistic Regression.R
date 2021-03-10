@@ -15,12 +15,24 @@ options(scipen=999)
 library(readr)
 library(dplyr)
 library(igraph)
+library(graphdata)
+#devtools::install_github("matthiasronnau/graphdata", force = TRUE)
 library(ggplot2)
 library(ggcorrplot)
 
 #Read the Data into R
+data <- read_csv("Data/2020-Apr.csv")
+ids <- read_csv("product_ids.csv")
 g <- read_csv("subcomponent.csv")
-purchases <- read_csv("purchases_no_missing.csv")
+
+set.seed(277)
+samp <- sample_frac(data, 0.2)
+rm(data)
+subcomponent_data <- subset(samp, samp$product_id %in% ids$id)
+rm(samp)
+data_no_missing <- na.omit(subcomponent_data)
+rm(subcomponent_data)
+#purchases <- read_csv("purchases_no_missing.csv")
 
 g_subcomponent <- graph_from_data_frame(g)
 
@@ -61,3 +73,4 @@ head(authority)
 #Combine the relevant stats into a single dataframe
 network_stats <- inner_join(inner_join(inner_join(close, between, by = "id"), hub, by = "id"), authority, by = "id")
 head(network_stats)
+
