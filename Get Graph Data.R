@@ -16,25 +16,12 @@ library(readr)
 library(lubridate)
 library(dplyr)
 library(igraph)
-#library(Rtools)
 library(graphdata)
-devtools::install_github("matthiasronnau/graphdata", force = TRUE)
 
 #Read the Data into R
-data <- read_csv("Data/2020-Apr.csv")
-head(data)
+purhcases_no_missing <- read_csv("purchases_no_missing.csv")
 
-#Data Cleaning
-unique(data$event_type)
-
-purchases <- subset(data, data$event_type == "purchase")
-rm(data)
-purchases$event_time <- as_datetime(purchases$event_time)
-head(purchases)
-
-purchases_no_missing <- na.omit(purchases)
-write.table(purchases_no_missing, row.names = FALSE, col.names = colnames(purchases_no_missing), sep = ",", file = "purchases_no_missing.csv")
-
+#Make iGraph object
 g <- graphdata::graph_data(data = purchases_no_missing, id = "user_id", product_id = "product_id")
 print(g)
 
@@ -66,7 +53,7 @@ g_subcomponent <- induced_subgraph(g, subcomponents)
 item_subcomponent <- as_data_frame(g_subcomponent)
 colnames(item_subcomponent) <- c("Source", "Target")
 
-write.table(item_subcomponent, row.names = FALSE, col.names = c("Source", "Target"), sep = ",", file = "subcomponent.csv")
+write.table(item_subcomponent, row.names = FALSE, col.names = c("Source", "Target"), sep = ",", file = "Data/Cleaned Data/subcomponent.csv")
 
 
 
