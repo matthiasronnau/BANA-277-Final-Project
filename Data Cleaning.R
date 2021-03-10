@@ -17,6 +17,7 @@ library(lubridate)
 library(dplyr)
 library(igraph)
 #library(Rtools)
+library(graphdata)
 devtools::install_github("matthiasronnau/graphdata", force = TRUE)
 
 #Read the Data into R
