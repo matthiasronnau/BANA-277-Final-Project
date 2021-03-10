@@ -18,9 +18,6 @@ library(dplyr)
 library(igraph)
 #library(Rtools)
 devtools::install_github("matthiasronnau/graphdata", force = TRUE)
-library(ggplot2)
-library(ggcorrplot)
-
 
 #Read the Data into R
 data <- read_csv("Data/2020-Apr.csv")
