@@ -9,31 +9,33 @@
 setwd("~/The University of California, Irvine/Winter Quarter/Customer and Social Analytics-277/Final Project")
 
 #Set options
-options(scipen=999)
+options(scipen = 999)
 
 ###Load Packages
 library(readr)
+library(lubridate)
+library(chron)
 library(dplyr)
 library(igraph)
-library(graphdata)
-#devtools::install_github("matthiasronnau/graphdata", force = TRUE)
-library(ggplot2)
-library(ggcorrplot)
 
 #Read the Data into R
-data <- read_csv("Data/2020-Apr.csv")
-ids <- read_csv("product_ids.csv")
-g <- read_csv("subcomponent.csv")
+samp <- read_csv("Data/Cleaned Data/sample.csv")
+ids <- read_csv("Data/Cleaned Data/product_ids.csv")
+g <- read_csv("Data/Cleaned Data/subcomponent.csv")
+in_degree_dataframe <- read_csv("Data/Cleaned Data/in_degree_dataframe.csv")
+out_degree_dataframe <- read_csv("Data/Cleaned Data/out_degree_dataframe.csv")
 
-set.seed(277)
-samp <- sample_frac(data, 0.2)
-rm(data)
-subcomponent_data <- subset(samp, samp$product_id %in% ids$id)
+#Get data from the sample that is part of the subcomponent
+data <- subset(samp, samp$product_id %in% ids$id)
 rm(samp)
-data_no_missing <- na.omit(subcomponent_data)
-rm(subcomponent_data)
-#purchases <- read_csv("purchases_no_missing.csv")
+rm(ids)
+data_no_missing <- na.omit(data)
+data_no_missing$purchase <- ifelse(data_no_missing$event_type == "purchase", 1, 0)
+data_no_missing$event_time <- as_datetime(data_no_missing$event_time)
+data_no_missing$time <- chron(times = format(data_no_missing$event_time, format = "%H:%M:%S"))
+rm(data)
 
+#Get Network Statistics
 g_subcomponent <- graph_from_data_frame(g)
 
 #Calculate the edge density
@@ -43,34 +45,73 @@ edge_density(g_subcomponent)
 reciprocity(g_subcomponent)
 
 #Calculate the closeness centrality
-close <- as.data.frame(closeness(g_subcomponent, mode = "all"))
-close$id <- as.numeric(rownames(close))
-rownames(close) <- c()
-colnames(close) <- c("closeness", "id")
-head(close)
+close_df <- as.data.frame(closeness(g_subcomponent, mode = "all"))
+close_df$id <- as.numeric(rownames(close_df))
+rownames(close_df) <- c()
+colnames(close_df) <- c("closeness", "id")
+head(close_df)
 
 #Calculate the betweenness centrality
-between <- as.data.frame(betweenness(g_subcomponent, directed = TRUE))
-between$id <- as.numeric(rownames(between))
-rownames(between) <- c()
-colnames(between) <- c("betweenness", "id")
-head(between)
+between_df <- as.data.frame(betweenness(g_subcomponent, directed = TRUE))
+between_df$id <- as.numeric(rownames(between_df))
+rownames(between_df) <- c()
+colnames(between_df) <- c("betweenness", "id")
+head(between_df)
 
 #Calculate the hub score
-hub <- as.data.frame(hub_score(g_subcomponent)$vector)
-hub$id <- as.numeric(rownames(hub))
-rownames(hub) <- c()
-colnames(hub) <- c("hub_score", "id")
-head(hub)
+hub_df <- as.data.frame(hub_score(g_subcomponent)$vector)
+hub_df$id <- as.numeric(rownames(hub_df))
+rownames(hub_df) <- c()
+colnames(hub_df) <- c("hub_score", "id")
+head(hub_df)
 
 #Calculate the authority score
-authority <- as.data.frame(authority_score(g_subcomponent)$vector)
-authority$id <- as.numeric(rownames(authority))
-rownames(authority) <- c()
-colnames(authority) <- c("authority_score", "id")
-head(authority)
+authority_df <- as.data.frame(authority_score(g_subcomponent)$vector)
+authority_df$id <- as.numeric(rownames(authority_df))
+rownames(authority_df) <- c()
+colnames(authority_df) <- c("authority_score", "id")
+head(authority_df)
 
 #Combine the relevant stats into a single dataframe
-network_stats <- inner_join(inner_join(inner_join(close, between, by = "id"), hub, by = "id"), authority, by = "id")
+network_stats <- inner_join(inner_join(inner_join(close_df, between_df, by = "id"), hub_df, by = "id"), authority_df, by = "id")
 head(network_stats)
+rm(close_df, between_df, hub_df, authority_df)
+
+#Join both datasets together to be used for the logistic regression
+merged <- inner_join(g, data_no_missing, by = c("Source" = "product_id"))
+merged$view <- ifelse(merged$event_type == "view", 1, 0)
+merged$cart <- ifelse(merged$event_type == "cart", 1, 0)
+merged$purchase <- ifelse(merged$event_type == "purchase", 1, 0)
+#merged <- left_join(data_no_missing, g, by = c("product_id" = "Source"))
+
+sources <- unique(merged$Source)
+target_source <- subset(merged, merged$Target %in% sources)
+neighbor_stats <- summarize(group_by(target_source, Target), nghb_mn_price = mean(price), 
+                            nghb_avg_pct_views = mean(view),
+                            nghb_avg_pct_cart = mean(cart),
+                            nghb_avg_pct_purchase = mean(purchase))
+names(neighbor_stats)[names(neighbor_stats) == "Target"] <- "product_id"
+head(neighbor_stats)
+
+logistic_data <- left_join(left_join(left_join(left_join(neighbor_stats, data_no_missing, by = "product_id"), in_degree_dataframe, by = c("product_id" = "Source")), out_degree_dataframe,
+                    by = c("product_id" = "Source")), network_stats, by = c("product_id" = "id"))
+
+logistic_model <- glm(purchase ~ log(price) + time + in_degree + out_degree + closeness + betweenness + hub_score + authority_score +
+                        nghb_mn_price + nghb_avg_pct_views + nghb_avg_pct_cart + nghb_avg_pct_purchase, family = "binomial", data = logistic_data)
+summary(logistic_model)
+
+updated_logistic_model <- glm(purchase ~ log(price) + time + closeness + betweenness,
+                              family = "binomial", data = logistic_data)
+summary(updated_logistic_model)
+
+
+
+
+
+
+
+
+
+
+
 
