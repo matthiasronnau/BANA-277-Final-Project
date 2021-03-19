@@ -60,7 +60,6 @@ dev.off()
 #Visualize Items
 purchases <- subset(purchases, purchases$product_id %in% ids$id)
 head(purchases)
-#purchases$date <- as_date(purchases$event_time)
 purchases$time <- chron(times = format(purchases$event_time, format = "%H:%M:%S"))
 
 #Histogram of Time Purchases are Made
@@ -68,11 +67,18 @@ min(purchases$time)
 mean(purchases$time)
 median(purchases$time)
 max(purchases$time)
-#hist(purchases$time)
+
 ggplot(purchases, aes(x = time)) + geom_histogram(col = "black", fill = "#0064A4") + ggtitle("Distribution of Times Purchases Are Made") + xlab("Time") + 
   ylab("Frequency") + scale_x_continuous(labels = c("0.00" = "00:00:00", "0.25" = "06:00:00", "0.50" = "12:00:00", "0.75" = "18:00:00", "1.00" = "24:00:00")) +
   theme_bw() + theme(plot.title = element_text(hjust = 0.5))
 dev.copy(png, "Visualizations/time_hist.png")
+dev.off()
+
+#Barplot Showing the Days on Which Purchases Are Made
+ggplot(purchases, aes(x = weekday)) + geom_bar(stat = "count", fill = "#0064A4") +
+  labs(title = "Purchases by Weekday", x = "Weekday", y = "Count") + 
+  theme_test() + theme(plot.title = element_text(hjust = 0.5))
+dev.copy(png, "Visualizations/purchases_day.png", width = 800)
 dev.off()
 
 #Boxplot of Product Price by Category
