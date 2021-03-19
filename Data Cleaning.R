@@ -49,6 +49,9 @@ purchases_no_missing$category <- str_to_title(sub("[[:punct:]].+", "", purchases
 unique(purchases_no_missing$category)
 length(unique(purchases_no_missing$category))
 
+#Make a column for the weekday
+purchases_no_missing$weekday <- wday(purchases_no_missing$event_time, label = TRUE)
+
 #Export cleaned data file into a csv
 write.table(purchases_no_missing, row.names = FALSE, col.names = colnames(purchases_no_missing), sep = ",", file = "Data/Cleaned Data/purchases_no_missing.csv")
 
