@@ -19,6 +19,7 @@ library(chron)
 library(dplyr)
 library(ROSE)
 library(igraph)
+library(fastDummies)
 
 #Read the Data into R
 samp <- read_csv("Data/Cleaned Data/sample.csv")
@@ -34,6 +35,7 @@ data_no_missing <- na.omit(data)
 data_no_missing$purchase <- ifelse(data_no_missing$event_type == "purchase", 1, 0)
 data_no_missing$event_time <- as_datetime(data_no_missing$event_time)
 data_no_missing$time <- chron(times = format(data_no_missing$event_time, format = "%H:%M:%S"))
+data_no_missing$weekday <- wday(data_no_missing$event_time, label = TRUE)
 rm(data)
 nrow(subset(data_no_missing, data_no_missing$purchase == 1))
 nrow(data_no_missing)
@@ -104,14 +106,22 @@ head(neighbor_stats)
 
 logistic_data <- left_join(left_join(left_join(left_join(neighbor_stats, over, by = "product_id"), in_degree_dataframe, by = c("product_id" = "Source")), out_degree_dataframe,
                     by = c("product_id" = "Source")), network_stats, by = c("product_id" = "id"))
+logistic_data <- dummy_cols(logistic_data, select_columns = "weekday")
 rm(over, neighbor_stats, in_degree_dataframe, out_degree_dataframe, network_stats)
 
-logistic_model <- glm(purchase ~ log(price) + time + in_degree + out_degree + closeness + betweenness + hub_score + authority_score +
-                        nghb_mn_price + nghb_avg_pct_views + nghb_avg_pct_cart + nghb_avg_pct_purchase, family = "binomial", data = logistic_data)
+logistic_model <- glm(purchase ~ log(price) + time + weekday_Mon + weekday_Tue + 
+                        weekday_Wed + weekday_Thu + weekday_Fri + weekday_Sat + 
+                        in_degree + out_degree + closeness + betweenness + 
+                        hub_score + authority_score + nghb_mn_price + 
+                        nghb_avg_pct_views + nghb_avg_pct_cart + 
+                        nghb_avg_pct_purchase, family = "binomial", data = logistic_data)
 summary(logistic_model)
 
-updated_logistic_model <- glm(purchase ~ log(price) + time + in_degree + closeness + betweenness + 
-                                hub_score + nghb_avg_pct_views, family = "binomial", data = logistic_data)
+updated_logistic_model <- glm(purchase ~ log(price) + time + weekday_Mon + 
+                                weekday_Tue + weekday_Wed + weekday_Thu + 
+                                weekday_Fri + weekday_Sat + in_degree + 
+                                closeness + betweenness + hub_score + 
+                                nghb_avg_pct_views, family = "binomial", data = logistic_data)
 summary(updated_logistic_model)
 
 
